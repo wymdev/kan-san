@@ -1,19 +1,28 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Colors from '../../constants/Colors';
 
 export default function MainMenu() {
+
+  const router = useRouter();
+
   return (
     <View style={styles.menuRow}>
-      <TouchableOpacity style={styles.menuCard}>
+      <TouchableOpacity 
+        style={styles.menuCard}
+        onPress={() => router.push('/ticket/BuyTicketScreen')}
+      >
         <LinearGradient colors={['#D15DFF','#FF57CB']} style={styles.iconCircle}>
           <Ionicons name="ticket-outline" size={36} color="#fff" />
         </LinearGradient>
         <Text style={styles.menuText}>Buy Lottery</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.menuCard}>
+      <TouchableOpacity style={styles.menuCard}
+        onPress={() => router.push('/ticket/LotteryResultsScreen')}
+      >
         <LinearGradient colors={['#39A7FA','#15E5B5']} style={styles.iconCircle}>
           <Ionicons name="search-outline" size={36} color="#fff" />
         </LinearGradient>

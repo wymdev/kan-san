@@ -1,245 +1,318 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import Modal from 'react-native-modal';
+import {
+  Animated,
+  Dimensions,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
-// Built-in icon configurations
-const MODAL_TYPES = {
-  info: { name: 'information-circle-outline', color: '#2196F3' },
-  warning: { name: 'warning-outline', color: '#FF9800' },
-  success: { name: 'checkmark-circle-outline', color: '#4CAF50' },
-  danger: { name: 'close-circle-outline', color: '#F44336' },
-  error: { name: 'alert-circle-outline', color: '#F44336' },
-};
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-export default function BottomSheetModal({ 
-  visible, 
-  onClose, 
+interface BottomSheetModalProps {
+  visible: boolean;
+  onClose: () => void;
+  title?: string;
+  children: React.ReactNode;
+  buttonLabel?: string;
+  buttonOnPress?: () => void;
+  secondaryButtonLabel?: string;
+  secondaryButtonOnPress?: () => void;
+  type?: 'default' | 'success' | 'warning' | 'danger';
+}
+
+export default function BottomSheetModal({
+  visible,
+  onClose,
   title,
   children,
   buttonLabel,
   buttonOnPress,
-  color,
-  icon,
-  iconColor,
-  type, // 'info' | 'warning' | 'success' | 'danger' | 'error'
   secondaryButtonLabel,
   secondaryButtonOnPress,
-  secondaryButtonColor,
-  swipeToClose = true,
-}) {
-  // Use type to get icon and color, or fall back to custom values
-  const modalType = type ? MODAL_TYPES[type] : null;
-  const finalIcon = icon || modalType?.name;
-  const finalIconColor = iconColor || modalType?.color;
-  const finalColor = color || modalType?.color || "#AB4EFF";
+  type = 'default',
+}: BottomSheetModalProps) {
+  const backdropOpacity = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    if (visible) {
+      Animated.timing(backdropOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.timing(backdropOpacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [visible]);
+
+  const getTypeColors = () => {
+    switch (type) {
+      case 'success':
+        return ['#10B981', '#059669'];
+      case 'warning':
+        return ['#F59E0B', '#D97706'];
+      case 'danger':
+        return ['#EF4444', '#DC2626'];
+      default:
+        return ['#8B5CF6', '#7C3AED'];
+    }
+  };
 
   return (
     <Modal
-      isVisible={visible}
-      onBackdropPress={onClose}
-      onBackButtonPress={onClose}
-      onSwipeComplete={onClose}
-      swipeDirection={swipeToClose ? ['down'] : undefined}
-      animationIn="slideInUp"
-      animationOut="slideOutDown"
-      animationInTiming={350}
-      animationOutTiming={250}
-      backdropTransitionInTiming={350}
-      backdropTransitionOutTiming={250}
-      backdropOpacity={0.5}
-      style={styles.modal}
-      useNativeDriver={true}
-      hideModalContentWhileAnimating={true}
-      propagateSwipe={true}
-      swipeThreshold={80}
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+      statusBarTranslucent
     >
-      <View style={styles.sheet}>
-        {/* Drag indicator bar - visual cue for swipe */}
-        <View style={styles.dragHandle}>
-          <View style={styles.bar} />
-        </View>
-        
-        {/* Close button top right */}
-        <TouchableOpacity 
-          style={styles.closeBtn} 
-          onPress={onClose}
-          activeOpacity={0.7}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.modalOverlay}
+      >
+        {/* Animated Backdrop with smooth fade */}
+        <Animated.View
+          style={[
+            styles.modalBackdrop,
+            {
+              opacity: backdropOpacity,
+            },
+          ]}
         >
-          <Ionicons name="close" size={24} color="#9E9E9E" />
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={onClose}
+          >
+            <BlurView intensity={15} tint="dark" style={StyleSheet.absoluteFill} />
+          </TouchableOpacity>
+        </Animated.View>
 
-        {/* Icon (optional) */}
-        {finalIcon && (
-          <View style={[styles.iconContainer, { backgroundColor: finalIconColor }]}>
-            <Ionicons name={finalIcon} size={32} color="#fff" />
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            {/* Drag Handle Indicator */}
+            <View style={styles.dragIndicatorContainer}>
+              <View style={styles.dragIndicator} />
+            </View>
+
+            {/* Header */}
+            <View style={styles.modalHeader}>
+              <View style={styles.modalHeaderLeft}>
+                <View style={[styles.modalIconCircle, { backgroundColor: `${getTypeColors()[0]}15` }]}>
+                  <Ionicons 
+                    name={type === 'success' ? 'checkmark-circle' : 'information-circle'} 
+                    size={24} 
+                    color={getTypeColors()[0]} 
+                  />
+                </View>
+                <Text style={styles.modalTitle}>{title || 'Confirmation'}</Text>
+              </View>
+              <TouchableOpacity onPress={onClose} style={styles.modalCloseBtn}>
+                <Ionicons name="close" size={28} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalDivider} />
+
+            {/* Scrollable Content */}
+            <ScrollView
+              style={styles.modalScrollView}
+              contentContainerStyle={styles.modalScrollContent}
+              showsVerticalScrollIndicator={true}
+              bounces={true}
+              nestedScrollEnabled={true}
+            >
+              <TouchableOpacity activeOpacity={1}>
+                {children}
+              </TouchableOpacity>
+            </ScrollView>
+
+            {/* Footer Buttons */}
+            {(buttonLabel || secondaryButtonLabel) && (
+              <View style={styles.modalFooter}>
+                {secondaryButtonLabel && secondaryButtonOnPress && (
+                  <TouchableOpacity
+                    style={styles.modalSecondaryButton}
+                    onPress={secondaryButtonOnPress}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.modalSecondaryButtonText}>
+                      {secondaryButtonLabel}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                {buttonLabel && buttonOnPress && (
+                  <TouchableOpacity
+                    style={[styles.modalButton, secondaryButtonLabel && { flex: 1 }]}
+                    onPress={buttonOnPress}
+                    activeOpacity={0.85}
+                  >
+                    <LinearGradient
+                      colors={getTypeColors()}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.modalButtonGradient}
+                    >
+                      <Text style={styles.modalButtonText}>{buttonLabel}</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
           </View>
-        )}
-        
-        {/* Title */}
-        {title && <Text style={styles.title}>{title}</Text>}
-        
-        {/* Body content */}
-        <View style={styles.content}>
-          {children}
         </View>
-        
-        {/* Buttons */}
-        <View style={styles.buttonContainer}>
-          {secondaryButtonLabel && (
-            <TouchableOpacity 
-              style={[
-                styles.actionBtn, 
-                secondaryButtonColor ? styles.primaryBtn : styles.secondaryBtn,
-                secondaryButtonColor && { backgroundColor: secondaryButtonColor },
-                buttonLabel && styles.flexButton
-              ]} 
-              onPress={secondaryButtonOnPress}
-              activeOpacity={0.85}
-            >
-              <Text style={secondaryButtonColor ? styles.actionBtnText : styles.secondaryBtnText}>
-                {secondaryButtonLabel}
-              </Text>
-            </TouchableOpacity>
-          )}
-          
-          {buttonLabel && (
-            <TouchableOpacity 
-              style={[
-                styles.actionBtn, 
-                styles.primaryBtn,
-                { backgroundColor: finalColor },
-                secondaryButtonLabel && styles.flexButton
-              ]} 
-              onPress={buttonOnPress}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.actionBtnText}>{buttonLabel}</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  modal: {
+  modalOverlay: {
+    flex: 1,
     justifyContent: 'flex-end',
-    margin: 0,
   },
-  sheet: {
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    paddingBottom: 40,
-    paddingHorizontal: 24,
-    paddingTop: 0,
-    shadowColor: "#000",
-    shadowOpacity: 0.15,
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+  },
+  modalContainer: {
+    maxHeight: SCREEN_HEIGHT * 0.85,
+    backgroundColor: 'transparent',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
     shadowRadius: 20,
     shadowOffset: { width: 0, height: -4 },
-    elevation: 15,
-    minHeight: 200,
-    alignItems: "center",
-    position: "relative",
+    elevation: 10,
+    overflow: 'hidden',
   },
-  dragHandle: {
+  dragIndicatorContainer: {
     width: '100%',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingTop: 8,
-    marginBottom: 8,
+    paddingTop: 12,
+    paddingBottom: 8,
+    backgroundColor: '#fff',
   },
-  bar: {
-    height: 5,
+  dragIndicator: {
     width: 40,
-    backgroundColor: "#DADCE0",
-    borderRadius: 3,
+    height: 4,
+    backgroundColor: '#D1D5DB',
+    borderRadius: 2,
   },
-  closeBtn: {
-    position: 'absolute',
-    right: 20,
-    top: 20,
-    zIndex: 10,
-    padding: 4,
-    borderRadius: 20,
-    backgroundColor: '#F5F5F5',
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-    marginTop: 8,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 5,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: "700",
-    textAlign: "center", 
-    color: "#1A1A1A",
-    marginBottom: 12,
-    paddingHorizontal: 20,
-    lineHeight: 28,
-  },
-  content: {
-    width: "100%",
-    alignItems: "center",
-    marginBottom: 20,
-    paddingHorizontal: 8,
-  },
-  buttonContainer: {
-    width: "100%",
+  modalHeader: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 16,
+    backgroundColor: '#fff',
   },
-  actionBtn: {
-    borderRadius: 14,
-    paddingVertical: 16,
+  modalHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  modalIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+    flex: 1,
+  },
+  modalCloseBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalDivider: {
+    height: 1,
+    backgroundColor: '#E5E7EB',
+  },
+  modalScrollView: {
+    maxHeight: SCREEN_HEIGHT * 0.5,
+  },
+  modalScrollContent: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    flexGrow: 1,
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 28,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    backgroundColor: '#F9FAFB',
+    justifyContent: 'center',
+  },
+
+  modalSecondaryButton: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
-  },
-  primaryBtn: {
-    width: "100%",
-  },
-  secondaryBtn: {
-    backgroundColor: "#F5F5F5",
-    shadowOpacity: 0.05,
     borderWidth: 1,
-    borderColor: "#E0E0E0",
-    width: "100%",
+    borderColor: '#E5E7EB',
+    marginRight: 12, // Add this to ensure spacing between buttons
+    minWidth: 120   // Ensure minimum width
   },
-  flexButton: {
-    flex: 1,
-    width: 'auto',
+  modalSecondaryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6B7280',
   },
-  actionBtnText: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 17,
-    letterSpacing: 0.3,
+  modalButton: {
+    flex: 1,         // Add this for equal distribution
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#8B5CF6',
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+    minWidth: 120,   // Ensure minimum width
   },
-  secondaryBtnText: {
-    color: "#666",
-    fontWeight: "600",
-    fontSize: 17,
-    letterSpacing: 0.3,
+  modalButtonGradient: {
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
   },
 });
